@@ -74,7 +74,7 @@ CMD ["flask", "run", "--host=0.0.0.0", "--port=3000"]
 Once the Dockerfile has been created, the next step is to build the image.
 
 ```
-$ docker build -t cc-flask-app .
+$ docker build -t flask-app .
 ```
 
 ![docker build output](./screenshots/docker-build-output.png)
@@ -82,7 +82,7 @@ $ docker build -t cc-flask-app .
 ## Pushing to Dockerhub
 
 ```
-$ docker push cc-flask-app
+$ docker push suprateek19/flask-app
 ```
 
 ![docker push output](./screenshots/docker-push-output.png)
