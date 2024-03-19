@@ -151,7 +151,7 @@ $ docker compose up -d
 
 ![docker compose output](./screenshots/docker-compose-output.png)
 
-Here is the website's user interface when I visit `localhost:8000`
+Here is the website's user interface when I visit `localhost:3000`
 
 ![flask application ui on Docker](./screenshots/flask-application-ui.png)
 
