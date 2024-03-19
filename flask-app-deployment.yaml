@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask-app-deployment
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: flask-app
+  template:
+    metadata:
+      labels:
+        app: flask-app
+    spec:
+      containers:
+      - name: flask-app
+        image: karmanya1804/todoapp:v2
+        ports:
+        - containerPort: 3000
+        env:
+        - name: MONGO_HOST
+          value: mongodb
+        - name: MONGO_PORT
+          value: "27017"
+        livenessProbe:                            
+            tcpSocket:                              
+              port: 3000                            
+            initialDelaySeconds: 5                  
+            periodSeconds: 5                        
+        readinessProbe:                           
+            httpGet:                                
+              path: /                                   
+              port: 3000                            
+              httpHeaders:                          
+            initialDelaySeconds: 10                 
+            periodSeconds: 10

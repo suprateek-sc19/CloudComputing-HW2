@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: faulty-pod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: faulty-pod
+  template:
+    metadata:
+      labels:
+        app: faulty-pod
+    spec:
+      containers:
+      - name: faulty-container
+        image: busybox
+        command: ["sh", "-c", "exit 1"]

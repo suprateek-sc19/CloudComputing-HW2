@@ -1,0 +1,57 @@
+apiVersion: v1
+data:
+  alertmanager.yml: |
+    global:
+      resolve_timeout: 1m
+      slack_api_url: 'https://hooks.slack.com/services/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'
+    route:
+      receiver: 'slack-notifications'
+      group_interval: 5m
+      group_wait: 10s
+      repeat_interval: 3h
+    receivers:
+      - name: 'slack-notifications'
+        slack_configs:
+          - channel: '#prometheus-alerts'
+            send_resolved: true
+            icon_url: https://avatars3.githubusercontent.com/u/3380462
+            title: |-
+              [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] Monitoring - {{ .CommonLabels.alertname }}
+              {{- if gt (len .CommonLabels) (len .GroupLabels) -}}
+                {{" "}}(
+                {{- with .CommonLabels.Remove .GroupLabels.Names }}
+                  {{- range $index, $label := .SortedPairs -}}
+                    {{ if $index }}, {{ end }}
+                    {{- $label.Name }}="{{ $label.Value -}}"
+                  {{- end }}
+                {{- end -}}
+                )
+              {{- end }}
+            text: >-
+              {{ range .Alerts -}}
+              Alert: {{ .Annotations.title }}{{ if .Labels.severity }} - {{ .Labels.severity }}{{ end }}
+              Description: {{ .Annotations.description }}
+              Details:
+                {{ range .Labels.SortedPairs }} • {{ .Name }}: {{ .Value }}
+                {{ end }}
+              {{ end }}
+    templates:
+      - /etc/alertmanager/*.tmpl
+kind: ConfigMap
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","data":{"alertmanager.yml":"global:\n  resolve_timeout: 1m\n  slack_api_url: 'https://hooks.slack.com/services/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'\nroute:\n  receiver: 'slack-notifications'\n  group_interval: 5m\n  group_wait: 10s\n  repeat_interval: 3h\nreceivers:\n  - name: 'slack-notifications'\n    slack_configs:\n      - channel: '#prometheus-alerts'\n        send_resolved: true\n        icon_url: https://avatars3.githubusercontent.com/u/3380462\n        title: |-\n          [{{ .Status | toUpper }}{{ if eq .Status \"firing\" }}:{{ .Alerts.Firing | len }}{{ end }}] Monitoring - {{ .CommonLabels.alertname }}\n          {{- if gt (len .CommonLabels) (len .GroupLabels) -}}\n            {{\" \"}}(\n            {{- with .CommonLabels.Remove .GroupLabels.Names }}\n              {{- range $index, $label := .SortedPairs -}}\n                {{ if $index }}, {{ end }}\n                {{- $label.Name }}=\"{{ $label.Value -}}\"\n              {{- end }}\n            {{- end -}}\n            )\n          {{- end }}\n        text: \u003e-\n          {{ range .Alerts -}}\n          Alert: {{ .Annotations.title }}{{ if .Labels.severity }} - {{ .Labels.severity }}{{ end }}\n          Description: {{ .Annotations.description }}\n          Details:\n            {{ range .Labels.SortedPairs }} • {{ .Name }}: {{ .Value }}\n            {{ end }}\n          {{ end }}\ntemplates:\n  - /etc/alertmanager/*.tmpl\n"},"kind":"ConfigMap","metadata":{"annotations":{"meta.helm.sh/release-name":"prometheus","meta.helm.sh/release-namespace":"default"},"creationTimestamp":"2024-03-18T09:58:57Z","labels":{"app.kubernetes.io/instance":"prometheus","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"alertmanager","app.kubernetes.io/version":"v0.27.0","helm.sh/chart":"alertmanager-1.9.0"},"name":"prometheus-alertmanager","namespace":"default","resourceVersion":"350874","uid":"8fd7a888-54be-4266-a0ed-8cf9ee91428a"}}
+    meta.helm.sh/release-name: prometheus
+    meta.helm.sh/release-namespace: default
+  creationTimestamp: "2024-03-18T09:58:57Z"
+  labels:
+    app.kubernetes.io/instance: prometheus
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/version: v0.27.0
+    helm.sh/chart: alertmanager-1.9.0
+  name: prometheus-alertmanager
+  namespace: default
+  resourceVersion: "351293"
+  uid: 8fd7a888-54be-4266-a0ed-8cf9ee91428a
