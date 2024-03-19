@@ -3,7 +3,7 @@ title: "CS-GY 9223 Cloud Computing"
 subtitle: "Assignment 2"
 author: 
   - "Suprateek Chatterjee sc10344@nyu.edu"
-  - "Karmanya Mendiratta @nyu.edu"
+  - "Karmanya Mendiratta km6296@nyu.edu"
 format: pdf
 number-sections: true
 geometry: 
@@ -67,7 +67,7 @@ CMD ["flask", "run", "--host=0.0.0.0", "--port=3000"]
 
 4. __`RUN pip install -r requirements.txt`__: This command runs the pip install command inside the container. It installs the Python packages listed in the requirements.txt file, assuming that the file exists in the current working directory of the container.
 
-5. __`EXPOSE 5000`__: This line informs Docker that the container will listen on port 5000. However, it doesn't actually publish the port to the host system. We'll need to map this port when running the container.
+5. __`EXPOSE 3000`__: This line informs Docker that the container will listen on port 5000. However, it doesn't actually publish the port to the host system. We'll need to map this port when running the container.
 
 6. __`CMD flask run --host 0.0.0.0`__: This sets the default command that will be executed when the container is started. It runs the Flask application using `flask run` and binds it to all available network interfaces using `--host 0.0.0.0`. This makes the Flask app accessible externally.
 
@@ -97,44 +97,53 @@ We can see on Docker Hub that the image was pushed successfully.
 We will utilize docker-compose to create containers for both the Flask application and a MongoDB instance. The Docker Compose file is written using YAML.
 
 ```yaml
+version: '3.8'
 services:
   web:
-    image: cc-flask-app
+    build: .
     ports:
-      - "8000:5000"
+      - "3000:3000"
+    environment:
+      - FLASK_ENV=development
+      - MONGO_HOST=mongodb
     depends_on:
       - mongodb
-    environment:
-      - MONGO_HOST=mongodb
+
   mongodb:
-    image: mongo
-    ports:
-      - 27017:27017
+    image: mongo:latest
     volumes:
-      - .data:/data/db
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:
 ```
+
+- `version: '3.8'`: Specifies the version of the Docker Compose file format. This determines which features will be available.
 
 - `services`: This is the top-level key in a Docker Compose file, and it defines the list of services or containers we want to create and manage.
 
-- `web`: This is the name of the first service, which is called "web."
+### Service: `web`
+- This is the name of the first service, which is called "web."
+- `build: .`: Indicates that Docker should build the image for this service using the Dockerfile in the current directory.
+- `ports`:
+  - This section defines port mapping for the container. It maps the host port 3000 to the container port 3000. This allows access to the Flask application on the host machine at port 3000, with Docker forwarding the traffic to the Flask application running inside the container on the same port.
+- `environment`:
+  - Sets environment variables for the service. `FLASK_ENV` is set to "development", and `MONGO_HOST` is set to "mongodb", directing the Flask application to the MongoDB service for database interactions.
+- `depends_on`:
+  - Specifies that the "web" service depends on the "mongodb" service, ensuring that the "mongodb" service starts before the "web" service. This is crucial because the Flask application relies on MongoDB for data storage.
 
-- `image: cc-flask-app`: It specifies the Docker image to use for the "web" service. In this case, it will use the image named "cc-flask-app," which likely contains our Flask web application.
+### Service: `mongodb`
+- This is the name of the second service, which is called "mongodb."
+- `image: mongo:latest`: Specifies the Docker image to use for the "mongodb" service, using the latest version of the official MongoDB image.
+- `volumes`:
+  - Defines a data volume named `mongo-data` for the "mongodb" service. This volume is mounted at `/data/db` inside the container, providing persistent storage for MongoDB data.
 
-- `ports`: This section defines port mapping for the container. Here, it maps the host port 8000 to the container port 5000. So, we can access the Flask application on our host machine at port 8000, and Docker will forward the traffic to the Flask application running inside the container on port 5000.
+### Volumes:
+- `mongo-data`: Defines a named volume that persists data stored by the MongoDB container, ensuring data is not lost when the container is stopped or removed.
 
-- `depends_on`: This specifies that the "web" service depends on the "mongodb" service. It ensures that the "mongodb" service is started before the "web" service. This is important since our Flask application relies on the MongoDB service.
+## Summary
+This Docker Compose file configures two services: one for a Flask web application (`web`) and another for a MongoDB database (`mongodb`). It outlines their Docker images, build contexts, port mappings, environment variables, dependencies, and volumes, creating a cohesive and interdependent application environment.
 
-- `environment`: In this section, we can set environment variables for the "web" service. Here, it's setting the MONGO_HOST environment variable to "mongodb." This tells the Flask application where to find the MongoDB service.
-
-- `mongodb`: This is the name of the second service, which is called "mongodb."
-
-- `image: mongo`: This specifies the Docker image to use for the "mongodb" service. It's using the official MongoDB image.
-
-- `ports`: Similar to the "web" service, this section maps the host port 27017 to the container port 27017. It allows us to access the MongoDB service on the host at port 27017.
-
-- `volumes`: This is used to define a data volume for the "mongodb" service. It binds the .data directory on the host to the /data/db directory inside the container. This is typically used to persist data outside the container, ensuring that data is not lost when the container is stopped or removed.
-
-In summary, this Docker Compose file configures two services: one for our Flask web application and another for a MongoDB database. It specifies their respective Docker images, port mappings, dependencies, environment variables, and data volume to create a complete and interrelated application environment.
 
 ```
 $ docker compose up -d
@@ -173,71 +182,71 @@ Next, I'll create the deployment and service for both the Flask app and MongoDB.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: web-deployment
-  labels:
-    app: web
+  name: flask-app-deployment
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
-      app: web
+      app: flask-app
   template:
     metadata:
       labels:
-        app: web
+        app: flask-app
     spec:
       containers:
-        - name: web
-          image: cc-flask-app
-          ports:
-            - containerPort: 5000
-          env:
-            - name: MONGO_HOST
-              value: mongo-service
+      - name: flask-app
+        image: suprateek19/flask-app:latest  
+        ports:
+        - containerPort: 3000
+        env:
+        - name: MONGO_HOST
+          value: mongodb
+        - name: MONGO_PORT
+          value: "27017"
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: web-service
+  name: flask-app-service
 spec:
   type: NodePort
-  selector:
-    app: web
   ports:
-    - protocol: TCP
-      port: 5000
-      targetPort: 5000
-      nodePort: 31000
+  - port: 3000
+    targetPort: 3000
+    nodePort: 30007
+  selector:
+    app: flask-app
 ```
 
 - Deployment Section:
-    - `apiVersion: apps/v1`: Specifies the API version for the Deployment.
-    - `kind: Deployment`: Defines the type of Kubernetes resource as a Deployment.
-    - `metadata`: Contains metadata for the Deployment, including the name and labels.
-    - `spec`: Describes the desired state for the Deployment.
-    - `replicas: 1`: Specifies that there should be one replica of the pod.
-    - `selector`: Defines how the Deployment finds which pods to manage.
-    - `matchLabels`: Selects pods with the label "app: web."
-    - `template`: Describes the pods that will be created.
-    - `metadata`: Contains labels for the pod.
-    - `spec`: Specifies the pod's specification.
-    - `containers`: Defines the containers within the pod.
-    - `name`: web: Names the container "web."
-    - `image`: cc-flask-app: Specifies the Docker image for the Flask app.
-    - `ports`: Specifies that the container will listen on port 5000.
-    - `env`: Sets environment variables for the container, like `MONGO_HOST` with the value `mongo-service`.
+  - `apiVersion: apps/v1`: Specifies the API version for the Deployment.
+  - `kind: Deployment`: Defines the type of Kubernetes resource as a Deployment.
+  - `metadata`: Contains metadata for the Deployment, including the name and labels.
+  - `spec`: Describes the desired state for the Deployment.
+  - `replicas: 2`: Specifies that there should be two replicas of the pod.
+  - `selector`: Defines how the Deployment finds which pods to manage.
+  - `matchLabels`: Selects pods with the label "app: flask-app".
+  - `template`: Describes the pods that will be created.
+      - `metadata`: Contains labels for the pod.
+      - `spec`: Specifies the pod's specification.
+          - `containers`: Defines the containers within the pod.
+              - `name`: Names the container "flask-app".
+              - `image`: Specifies the Docker image for the Flask app as `suprateek19/flask-app:latest`.
+              - `ports`: Specifies that the container will listen on port 3000.
+              - `env`: Sets environment variables for the container, such as `MONGO_HOST` with the value `mongodb`.
 
 - Service Section:
-    - `apiVersion: v1`: Specifies the API version for the Service.
-    - `kind: Service`: Defines the type of Kubernetes resource as a Service.
-    - `metadata`: Contains metadata for the Service, including the name.
-    - `spec`: Describes the desired state for the Service.
-    - `type`: NodePort: Exposes the Service on each node's IP at a static port (in this case, 31000).
-    - `selector`: Selects pods with the label "app: web."
-    - `ports`: Specifies the ports that the Service will forward.
-    - `protocol`: TCP: Specifies the protocol.
-    - `port: 5000`: Specifies the port on the Service.
-    - `targetPort: 5000`: Specifies the port on the pod.
+  - `apiVersion: v1`: Specifies the API version for the Service.
+  - `kind: Service`: Defines the type of Kubernetes resource as a Service.
+  - `metadata`: Contains metadata for the Service, including the name.
+  - `spec`: Describes the desired state for the Service.
+      - `type`: NodePort: Exposes the Service on each node's IP at a static port (nodePort: 30007).
+      - `selector`: Selects pods with the label "app: flask-app".
+      - `ports`: Specifies the ports that the Service will forward.
+          - `port: 3000`: Specifies the port on the Service.
+          - `targetPort: 3000`: Specifies the port on the pod to which the Service forwards.
+
 
 ```yaml
 apiVersion: apps/v1
@@ -303,7 +312,9 @@ service/web-service unchanged
 
 ![kubectl output](./screenshots/kubectl-output.png)
 
-The network is limited if using the Docker driver on Darwin, Windows, or WSL, and the Node IP is not reachable directly. The solution to get around this issue is documented [here](https://minikube.sigs.k8s.io/docs/handbook/accessing/)
+```
+$ minikube service --all
+```
 
 ![minikube service output](./screenshots/minikube-service-output.png)
 
@@ -319,16 +330,14 @@ To incorporate the load balancer for the web application, we simply need to upda
 apiVersion: v1
 kind: Service
 metadata:
-  name: web-service
+  name: flask-app-service
 spec:
   type: LoadBalancer
-  selector:
-    app: web
   ports:
-    - protocol: TCP
-      port: 5000
-      targetPort: 5000
-      nodePort: 31000
+  - port: 3000
+    targetPort: 3000
+  selector:
+    app: flask-app
 ```
 
 ![flask app load balanced](./screenshots/web-service-load-balanced.png)
